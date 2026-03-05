@@ -1,9 +1,6 @@
 export const coaches = [
-  { id: 1, name: "Sarah Mitchell", avatar: "SM", specialty: "Mindset & Performance", color: "hsl(221, 83%, 53%)" },
-  { id: 2, name: "James Rodriguez", avatar: "JR", specialty: "Business Growth", color: "hsl(142, 71%, 45%)" },
-  { id: 3, name: "Priya Sharma", avatar: "PS", specialty: "Leadership", color: "hsl(280, 67%, 55%)" },
-  { id: 4, name: "David Kim", avatar: "DK", specialty: "Sales Mastery", color: "hsl(38, 92%, 50%)" },
-  { id: 5, name: "Emma Wilson", avatar: "EW", specialty: "Life Transformation", color: "hsl(349, 79%, 55%)" },
+  { id: 1, name: "Ankit neerav", avatar: "SM", specialty: "Manifestaion & Goal Hacking", color: "hsl(221, 83%, 53%)" },
+  { id: 2, name: "Dr. Valarrmathi Srinivasan", avatar: "JR", specialty: "Breath Chakra", color: "hsl(142, 71%, 45%)" },
 ];
 
 export const campaigns = [

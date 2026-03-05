@@ -1,5 +1,15 @@
-import { useMemo, useState } from "react";
-import { Search, Play, Loader2, Download, BarChart3, Users, CheckCircle2, XCircle, IndianRupee } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import {
+  Search,
+  Play,
+  Loader2,
+  Download,
+  BarChart3,
+  Users,
+  CheckCircle2,
+  XCircle,
+  IndianRupee,
+} from "lucide-react";
 
 type PersonRow = {
   name: string;
@@ -17,7 +27,26 @@ type N8nResponse = {
 
 type TabKey = keyof N8nResponse | "analysis";
 
-const WEBHOOK_URL = "https://offbeatn8n.coachswastik.com/webhook/zoom-an";
+/** ✅ Coach selection from session storage */
+const COACH_STORAGE_KEY = "coach_id";
+
+// Coach 1 => Ankit (default)
+const WEBHOOK_ANKIT = "https://offbeatn8n.coachswastik.com/webhook/zoom-an";
+// Coach 2 => Valarmathi
+const WEBHOOK_VALAR = "https://offbeatn8n.coachswastik.com/webhook/zoom-valarrmathi";
+
+/**
+ * Map coach_id -> webhook URL
+ * - coach_id === "2" => Valar
+ * - otherwise => Ankit
+ *
+ * If your ids are different, just change this mapping.
+ */
+function getCoachWebhook(): string {
+  const coachId = sessionStorage.getItem(COACH_STORAGE_KEY);
+  if (coachId === "2") return WEBHOOK_VALAR;
+  return WEBHOOK_ANKIT;
+}
 
 function todayYYYYMMDD() {
   const d = new Date();
@@ -25,6 +54,13 @@ function todayYYYYMMDD() {
   const mm = String(d.getMonth() + 1).padStart(2, "0");
   const dd = String(d.getDate()).padStart(2, "0");
   return `${yyyy}-${mm}-${dd}`;
+}
+
+function normEmail(v: any) {
+  return String(v ?? "")
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, "");
 }
 
 function deduplicateByEmail(rows: PersonRow[]): PersonRow[] {
@@ -36,22 +72,6 @@ function deduplicateByEmail(rows: PersonRow[]): PersonRow[] {
     seen.add(email);
     return true;
   });
-}
-
-function buildEmailSet(rows: PersonRow[]) {
-  const set = new Set<string>();
-  for (const r of rows ?? []) {
-    const e = (r.email || "").toLowerCase().trim();
-    if (e) set.add(e);
-  }
-  return set;
-}
-
-function normEmail(v: any) {
-  return String(v ?? "")
-    .toLowerCase()
-    .trim()
-    .replace(/\s+/g, ""); // removes any hidden spaces
 }
 
 function computeNonPaidAttended(attended: PersonRow[], paidAttended: PersonRow[]) {
@@ -66,7 +86,6 @@ function computeNonPaidAttended(attended: PersonRow[], paidAttended: PersonRow[]
     return e && !paidEmails.has(e);
   });
 }
-
 
 function exportToCSV(rows: PersonRow[], filename: string) {
   const safe = rows ?? [];
@@ -133,7 +152,9 @@ function StatCard({
 }) {
   return (
     <div className="bg-card border border-border/50 rounded-xl card-shadow p-4 flex items-start gap-3">
-      <div className="h-10 w-10 rounded-lg bg-secondary/60 flex items-center justify-center">{icon}</div>
+      <div className="h-10 w-10 rounded-lg bg-secondary/60 flex items-center justify-center">
+        {icon}
+      </div>
       <div className="min-w-0">
         <div className="text-xs text-muted-foreground">{label}</div>
         <div className="text-xl font-bold text-foreground leading-tight">{value}</div>
@@ -241,6 +262,20 @@ export default function ZoomSessions() {
     []
   );
 
+  // ✅ OPTIONAL: if your layout dispatches `coachChange`, listen and reset
+  useEffect(() => {
+    const onCoachChange = () => {
+      setData({ attended: [], not_attended: [], paid_attended: [], non_paid_attended: [] });
+      setActiveTab("attended");
+      setError("");
+      // If you want auto-run on coach change, uncomment:
+      // triggerWorkflow();
+    };
+    window.addEventListener("coachChange", onCoachChange);
+    return () => window.removeEventListener("coachChange", onCoachChange);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const activeRows =
     activeTab === "analysis" ? [] : (data[activeTab as keyof N8nResponse] ?? []);
 
@@ -265,7 +300,10 @@ export default function ZoomSessions() {
 
     setLoading(true);
     try {
-      const res = await fetch(WEBHOOK_URL, {
+      const webhookUrl = getCoachWebhook();
+      console.log("[Zoom] coach_id:", sessionStorage.getItem(COACH_STORAGE_KEY), "url:", webhookUrl);
+
+      const res = await fetch(webhookUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ date, keyword }),
@@ -324,6 +362,9 @@ export default function ZoomSessions() {
           <h2 className="text-2xl font-bold text-foreground">Zoom Sessions</h2>
           <p className="text-sm text-muted-foreground mt-1">
             Trigger your n8n report, view segments, and analyze performance
+          </p>
+          <p className="text-xs text-muted-foreground mt-1">
+            Active coach_id: <span className="text-foreground font-medium">{sessionStorage.getItem(COACH_STORAGE_KEY) ?? "not set"}</span>
           </p>
         </div>
 

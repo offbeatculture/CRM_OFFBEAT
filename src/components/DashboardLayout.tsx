@@ -1,9 +1,21 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import {
-  LayoutDashboard, Users, Palette, BarChart3, MessageSquare,
-  Video, Zap, DollarSign, UserCircle, Settings, ChevronDown,
-  ChevronRight, Bell, Search, Menu, X
+  LayoutDashboard,
+  Users,
+  Palette,
+  BarChart3,
+  MessageSquare,
+  Video,
+  Zap,
+  DollarSign,
+  Settings,
+  Bell,
+  Search,
+  Menu,
+  X,
+  ChevronDown,
+  UserCircle,
 } from "lucide-react";
 import { coaches } from "@/data/dummy-data";
 
@@ -18,18 +30,82 @@ const navItems = [
   { label: "Revenue", icon: DollarSign, path: "/revenue" },
 ];
 
+const COACH_STORAGE_KEY = "coach_id";
+
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const location = useLocation();
-  const [coachOpen, setCoachOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+
+  // Keep coach id as string (sessionStorage stores strings)
+  const defaultCoachId = useMemo(() => (coaches?.[0]?.id != null ? String(coaches[0].id) : ""), []);
+
+  const [selectedCoach, setSelectedCoach] = useState<string>("");
+
+  // ✅ Load coach from sessionStorage or set default
+  useEffect(() => {
+    const saved = sessionStorage.getItem(COACH_STORAGE_KEY);
+
+    if (saved) {
+      setSelectedCoach(saved);
+    } else {
+      setSelectedCoach(defaultCoachId);
+      if (defaultCoachId) sessionStorage.setItem(COACH_STORAGE_KEY, defaultCoachId);
+    }
+  }, [defaultCoachId]);
+
+  // ✅ When coach changes, store + notify pages
+  const handleCoachChange = (coachId: string) => {
+    setSelectedCoach(coachId);
+    sessionStorage.setItem(COACH_STORAGE_KEY, coachId);
+
+    // Let other pages refetch (Zoom page can listen to this)
+    window.dispatchEvent(new Event("coachChange"));
+  };
+
+  const selectedCoachObj = useMemo(() => {
+    return coaches.find((c) => String(c.id) === selectedCoach);
+  }, [selectedCoach]);
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">
       {/* Sidebar */}
-      <aside className={`${sidebarOpen ? "w-64" : "w-0 -ml-64"} transition-all duration-300 bg-card border-r border-border flex flex-col shrink-0`}>
+      <aside
+        className={`${
+          sidebarOpen ? "w-64" : "w-0 -ml-64"
+        } transition-all duration-300 bg-card border-r border-border flex flex-col shrink-0`}
+      >
         <div className="p-5 border-b border-border">
           <h1 className="text-lg font-bold text-foreground tracking-tight">CoachFlow</h1>
           <p className="text-xs text-muted-foreground mt-0.5">Lead Strategy & Automation</p>
+
+          {/* ✅ Coach dropdown in sidebar */}
+          <div className="mt-4">
+            <div className="text-[11px] text-muted-foreground mb-1">Active Coach</div>
+
+            <div className="relative">
+              <UserCircle className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+
+              <select
+                value={selectedCoach}
+                onChange={(e) => handleCoachChange(e.target.value)}
+                className="w-full h-10 rounded-lg bg-secondary border border-border pl-9 pr-10 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 cursor-pointer"
+              >
+                {coaches.map((coach) => (
+                  <option key={coach.id} value={String(coach.id)}>
+                    {coach.name}
+                  </option>
+                ))}
+              </select>
+
+              <ChevronDown className="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+            </div>
+
+            {selectedCoachObj ? (
+              <div className="mt-2 text-[11px] text-muted-foreground">
+                Selected: <span className="text-foreground font-medium">{selectedCoachObj.name}</span>
+              </div>
+            ) : null}
+          </div>
         </div>
 
         <nav className="flex-1 overflow-y-auto py-3 px-3 space-y-0.5">
@@ -39,10 +115,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               <Link
                 key={item.path}
                 to={item.path}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${active
+                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                  active
                     ? "bg-primary/10 text-primary"
                     : "text-muted-foreground hover:bg-secondary hover:text-foreground"
-                  }`}
+                }`}
               >
                 <item.icon className="w-4 h-4" />
                 {item.label}
@@ -50,47 +127,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             );
           })}
 
-          {/* Coach Panels */}
-          <button
-            onClick={() => setCoachOpen(!coachOpen)}
-            className="flex items-center justify-between w-full px-3 py-2.5 rounded-lg text-sm font-medium text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors"
-          >
-            <span className="flex items-center gap-3">
-              <UserCircle className="w-4 h-4" />
-              Coach Panels
-            </span>
-            {coachOpen ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
-          </button>
-          {coachOpen && (
-            <div className="ml-4 space-y-0.5">
-              {coaches.map((coach) => {
-                const path = `/coach/${coach.id}`;
-                const active = location.pathname === path;
-                return (
-                  <Link
-                    key={coach.id}
-                    to={path}
-                    className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${active
-                        ? "bg-primary/10 text-primary font-medium"
-                        : "text-muted-foreground hover:bg-secondary hover:text-foreground"
-                      }`}
-                  >
-                    <div className="w-6 h-6 rounded-full bg-primary/10 text-primary flex items-center justify-center text-[10px] font-semibold">
-                      {coach.avatar}
-                    </div>
-                    {coach.name.split(" ")[0]}
-                  </Link>
-                );
-              })}
-            </div>
-          )}
-
           <Link
             to="/settings"
-            className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${location.pathname === "/settings"
+            className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+              location.pathname === "/settings"
                 ? "bg-primary/10 text-primary"
                 : "text-muted-foreground hover:bg-secondary hover:text-foreground"
-              }`}
+            }`}
           >
             <Settings className="w-4 h-4" />
             Settings
@@ -103,9 +146,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         {/* Header */}
         <header className="h-14 border-b border-border bg-card flex items-center justify-between px-5 shrink-0">
           <div className="flex items-center gap-3">
-            <button onClick={() => setSidebarOpen(!sidebarOpen)} className="text-muted-foreground hover:text-foreground transition-colors">
+            <button
+              onClick={() => setSidebarOpen(!sidebarOpen)}
+              className="text-muted-foreground hover:text-foreground transition-colors"
+            >
               {sidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
             </button>
+
             <div className="relative">
               <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
               <input
@@ -114,6 +161,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               />
             </div>
           </div>
+
           <div className="flex items-center gap-4">
             <button className="relative text-muted-foreground hover:text-foreground transition-colors">
               <Bell className="w-5 h-5" />
@@ -126,9 +174,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </header>
 
         {/* Page Content */}
-        <main className="flex-1 overflow-y-auto p-6">
-          {children}
-        </main>
+        <main className="flex-1 overflow-y-auto p-6">{children}</main>
       </div>
     </div>
   );
