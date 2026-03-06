@@ -33,7 +33,7 @@ const COACH_STORAGE_KEY = "coach_id";
 // Coach 1 => Ankit (default)
 const WEBHOOK_ANKIT = "https://offbeatn8n.coachswastik.com/webhook/zoom-an";
 // Coach 2 => Valarmathi
-const WEBHOOK_VALAR = "https://offbeatn8n.coachswastik.com/webhook/zoom-valarrmathi";
+const WEBHOOK_VALAR = "https://offbeatn8n.coachswastik.com/webhook-test/zoom-valarrmathi";
 
 /**
  * Map coach_id -> webhook URL
