@@ -35,6 +35,14 @@ const WEBHOOK_ANKIT = "https://offbeatn8n.coachswastik.com/webhook/zoom-an";
 // Coach 2 => Valarmathi
 const WEBHOOK_VALAR = "https://offbeatn8n.coachswastik.com/webhook/zoom-valarrmathi1";
 
+const ZOOM_WEBHOOKS: Record<string, string> = {
+  ankit: "https://offbeatn8n.coachswastik.com/webhook/zoom-an",
+  valar: "https://offbeatn8n.coachswastik.com/webhook/zoom-valarrmathi",
+  inspiring :"https://offbeatn8n.coachswastik.com/webhook/inspiring"
+};
+
+
+
 /**
  * Map coach_id -> webhook URL
  * - coach_id === "2" => Valar
@@ -42,10 +50,8 @@ const WEBHOOK_VALAR = "https://offbeatn8n.coachswastik.com/webhook/zoom-valarrma
  *
  * If your ids are different, just change this mapping.
  */
-function getCoachWebhook(): string {
-  const coachId = sessionStorage.getItem(COACH_STORAGE_KEY);
-  if (coachId === "2") return WEBHOOK_VALAR;
-  return WEBHOOK_ANKIT;
+function getZoomWebhook(account: string) {
+  return ZOOM_WEBHOOKS[account] || ZOOM_WEBHOOKS["ankit"];
 }
 
 function todayYYYYMMDD() {
@@ -237,6 +243,9 @@ function TableBlock({ rows, loading }: { rows: PersonRow[]; loading: boolean }) 
 }
 
 export default function ZoomSessions() {
+
+  const [zoomAccount, setZoomAccount] = useState("ankit");
+
   const [date, setDate] = useState(todayYYYYMMDD());
   const [keyword, setKeyword] = useState("");
   const [activeTab, setActiveTab] = useState<TabKey>("attended");
@@ -300,7 +309,7 @@ export default function ZoomSessions() {
 
     setLoading(true);
     try {
-      const webhookUrl = getCoachWebhook();
+      const webhookUrl = getZoomWebhook(zoomAccount);
       console.log("[Zoom] coach_id:", sessionStorage.getItem(COACH_STORAGE_KEY), "url:", webhookUrl);
 
       const res = await fetch(webhookUrl, {
@@ -369,6 +378,17 @@ export default function ZoomSessions() {
         </div>
 
         <div className="bg-card border border-border/50 rounded-xl card-shadow p-3 flex items-center gap-3 flex-wrap">
+
+        <select
+  value={zoomAccount}
+  onChange={(e) => setZoomAccount(e.target.value)}
+  className="h-9 rounded-md border border-border bg-background px-3 text-sm"
+  disabled={loading}
+>
+  <option value="ankit">Tools.Ankit</option>
+  <option value="valar">Offbeat 3</option>
+  <option value="inspiring">Inspiring Mentors</option>
+</select>
           <input
             type="date"
             value={date}
