@@ -41,6 +41,8 @@ const ZOOM_WEBHOOKS: Record<string, string> = {
   inspiring :"https://offbeatn8n.coachswastik.com/webhook/inspiring"
 };
 
+const EMAIL_AUTOMATION_WEBHOOK =
+  "https://offbeatn8n.coachswastik.com/webhook/email-automation";
 
 
 /**
@@ -187,7 +189,19 @@ function FunnelBar({ label, value, max }: { label: string; value: number; max: n
   );
 }
 
-function TableBlock({ rows, loading }: { rows: PersonRow[]; loading: boolean }) {
+function TableBlock({
+  rows,
+  loading,
+  selectedEmails,
+  toggleEmail,
+  toggleSelectAll,
+}: {
+  rows: PersonRow[];
+  loading: boolean;
+  selectedEmails: string[];
+  toggleEmail: (email: string) => void;
+  toggleSelectAll: () => void;
+}) {
   return (
     <div className="bg-card rounded-xl card-shadow border border-border/50 overflow-hidden relative">
       {loading ? (
@@ -202,16 +216,24 @@ function TableBlock({ rows, loading }: { rows: PersonRow[]; loading: boolean }) 
       <div className="overflow-x-auto">
         <table className="w-full">
           <thead>
-            <tr className="border-b border-border bg-secondary/50">
-              {["S.No", "Name", "Email", "Phone", "Batch No"].map((h) => (
-                <th
-                  key={h}
-                  className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider"
-                >
-                  {h}
-                </th>
-              ))}
-            </tr>
+         <tr className="border-b border-border bg-secondary/50">
+  <th className="px-4 py-3">
+    <input
+      type="checkbox"
+      checked={selectedEmails.length === rows.length && rows.length > 0}
+      onChange={toggleSelectAll}
+    />
+  </th>
+
+  {["S.No", "Name", "Email", "Phone", "Batch No"].map((h) => (
+    <th
+      key={h}
+      className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider"
+    >
+      {h}
+    </th>
+  ))}
+</tr>
           </thead>
 
           <tbody>
@@ -223,16 +245,24 @@ function TableBlock({ rows, loading }: { rows: PersonRow[]; loading: boolean }) 
               </tr>
             ) : (
               rows.map((r, idx) => (
-                <tr
-                  key={`${r.email}-${idx}`}
-                  className="border-b border-border/50 hover:bg-secondary/30 transition-colors"
-                >
-                  <td className="px-4 py-3 text-sm text-muted-foreground">{idx + 1}</td>
-                  <td className="px-4 py-3 text-sm font-medium text-foreground">{r.name}</td>
-                  <td className="px-4 py-3 text-sm text-muted-foreground">{r.email}</td>
-                  <td className="px-4 py-3 text-sm text-muted-foreground">{r.phone}</td>
-                  <td className="px-4 py-3 text-sm text-muted-foreground">{r.batchNo}</td>
-                </tr>
+               <tr
+  key={`${r.email}-${idx}`}
+  className="border-b border-border/50 hover:bg-secondary/30 transition-colors"
+>
+  <td className="px-4 py-3">
+    <input
+      type="checkbox"
+      checked={selectedEmails.includes(r.email)}
+      onChange={() => toggleEmail(r.email)}
+    />
+  </td>
+
+  <td className="px-4 py-3 text-sm text-muted-foreground">{idx + 1}</td>
+  <td className="px-4 py-3 text-sm font-medium text-foreground">{r.name}</td>
+  <td className="px-4 py-3 text-sm text-muted-foreground">{r.email}</td>
+  <td className="px-4 py-3 text-sm text-muted-foreground">{r.phone}</td>
+  <td className="px-4 py-3 text-sm text-muted-foreground">{r.batchNo}</td>
+</tr>
               ))
             )}
           </tbody>
@@ -251,6 +281,7 @@ export default function ZoomSessions() {
   const [activeTab, setActiveTab] = useState<TabKey>("attended");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [selectedEmails, setSelectedEmails] = useState<string[]>([]);
 
   const [data, setData] = useState<N8nResponse>({
     attended: [],
@@ -363,6 +394,51 @@ export default function ZoomSessions() {
     exportToCSV(activeRows, `${label.replace(/\s+/g, "_").toLowerCase()}_${date}.csv`);
   }
 
+
+  function toggleEmail(email: string) {
+  setSelectedEmails((prev) =>
+    prev.includes(email)
+      ? prev.filter((e) => e !== email)
+      : [...prev, email]
+  );
+}
+
+function toggleSelectAll() {
+  if (selectedEmails.length === activeRows.length) {
+    setSelectedEmails([]);
+  } else {
+    setSelectedEmails(activeRows.map((r) => r.email));
+  }
+}
+
+
+async function triggerEmailAutomation() {
+  if (!selectedEmails.length) {
+    alert("Please select at least one email.");
+    return;
+  }
+
+  try {
+    const res = await fetch(EMAIL_AUTOMATION_WEBHOOK, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        emails: selectedEmails,
+        date,
+        segment: activeTab,
+      }),
+    });
+
+    if (!res.ok) throw new Error("Email automation failed");
+
+    alert("Email automation triggered successfully 🚀");
+  } catch (err) {
+    alert("Failed to trigger email automation");
+  }
+}
+
   return (
     <div className="space-y-6">
       {/* Header + Controls */}
@@ -425,6 +501,14 @@ export default function ZoomSessions() {
             <Download className="w-4 h-4" />
             Export CSV
           </button>
+
+          <button
+  onClick={triggerEmailAutomation}
+  disabled={!selectedEmails.length}
+  className="h-9 px-4 rounded-md bg-green-600 text-white text-sm font-medium flex items-center gap-2 disabled:opacity-60"
+>
+  Send Email
+</button>
         </div>
       </div>
 
@@ -516,7 +600,13 @@ export default function ZoomSessions() {
           </div>
         </div>
       ) : (
-        <TableBlock rows={activeRows} loading={loading} />
+        <TableBlock
+  rows={activeRows}
+  loading={loading}
+  selectedEmails={selectedEmails}
+  toggleEmail={toggleEmail}
+  toggleSelectAll={toggleSelectAll}
+/>
       )}
     </div>
   );
