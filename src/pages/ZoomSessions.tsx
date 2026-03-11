@@ -42,7 +42,7 @@ const ZOOM_WEBHOOKS: Record<string, string> = {
 };
 
 const EMAIL_AUTOMATION_WEBHOOK =
-  "https://offbeatn8n.coachswastik.com/webhook/email-automation";
+  "https://offbeatn8n.coachswastik.com/webhook-test/email-post";
 
 
 /**
